@@ -240,7 +240,7 @@ function App() {
     if (shareToken) return undefined;
     if (!user || user.demo || !authReady || !accessToken) return undefined;
     const controller = new AbortController();
-    apiRequest(`${import.meta.env.VITE_API_URL || ''}/api/audits/`, {
+    apiRequest(`${API_URL}/api/audits/`, {
       headers: { Authorization: `Bearer ${user.token}` },
       signal: controller.signal,
     })
@@ -261,7 +261,7 @@ function App() {
     }
     if (page !== 'quality') return undefined;
     const controller = new AbortController();
-    apiRequest(`${import.meta.env.VITE_API_URL || ''}/api/audits/review_queue/`, { signal: controller.signal })
+    apiRequest(`${API_URL}/api/audits/review_queue/`, { signal: controller.signal })
       .then(readApiResponse)
       .then((data) => setReviewQueue(data.map((audit) => ({ ...audit, selectedModules: audit.module_keys }))))
       .catch((error) => {
@@ -355,7 +355,7 @@ function App() {
   const createAudit = async (audit) => {
     if (user && !user.demo) {
       try {
-        const response = await apiRequest(`${import.meta.env.VITE_API_URL || ''}/api/audits/`, {
+        const response = await apiRequest(`${API_URL}/api/audits/`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${user.token}` },
           body: JSON.stringify({ client: audit.client, type: audit.type, goal: audit.goal, selected_modules: audit.selectedModules }),
@@ -380,7 +380,7 @@ function App() {
   const signOut = async () => {
     if (user && !user.demo) {
       try {
-        const response = await apiRequest(`${import.meta.env.VITE_API_URL || ''}/api/auth/logout/`, { method: 'POST' });
+        const response = await apiRequest(`${API_URL}/api/auth/logout/`, { method: 'POST' });
         if (!response.ok) setNotice('Signed out locally; the server could not revoke this refresh session.');
       } catch {
         setNotice('Signed out locally; the server could not revoke this refresh session.');
@@ -486,7 +486,7 @@ function LoginScreen({ onLogin }) {
     setError('');
     setLoading(true);
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/auth/${isRegister ? 'register' : 'token'}/`, {
+      const response = await fetch(`${API_URL}/api/auth/${isRegister ? 'register' : 'token'}/`, {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -764,7 +764,7 @@ function AuditWorkspace({ audit, token, reviewer, onAuditUpdated, onDelete, onBa
   useEffect(() => {
     if (!token || !Number.isInteger(Number(audit.id))) return undefined;
     const controller = new AbortController();
-    apiRequest(`${import.meta.env.VITE_API_URL || ''}/api/modules/?audit=${audit.id}`, {
+    apiRequest(`${API_URL}/api/modules/?audit=${audit.id}`, {
       headers: { Authorization: `Bearer ${token}` },
       signal: controller.signal,
     })
@@ -795,7 +795,7 @@ function AuditWorkspace({ audit, token, reviewer, onAuditUpdated, onDelete, onBa
   useEffect(() => {
     if (!token || !Number.isInteger(Number(audit.id))) return undefined;
     const controller = new AbortController();
-    apiRequest(`${import.meta.env.VITE_API_URL || ''}/api/findings/?audit=${audit.id}`, {
+    apiRequest(`${API_URL}/api/findings/?audit=${audit.id}`, {
       headers: { Authorization: `Bearer ${token}` },
       signal: controller.signal,
     })
@@ -950,7 +950,7 @@ function AuditWorkspace({ audit, token, reviewer, onAuditUpdated, onDelete, onBa
         return;
       }
       try {
-        const response = await apiRequest(`${import.meta.env.VITE_API_URL || ''}/api/modules/${record.id}/`, {
+        const response = await apiRequest(`${API_URL}/api/modules/${record.id}/`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
           body: JSON.stringify({ status: isDone ? 'not_started' : 'complete' }),
@@ -1015,7 +1015,7 @@ function AuditWorkspace({ audit, token, reviewer, onAuditUpdated, onDelete, onBa
     let updatedAudit = { ...audit, status: 'In review' };
     if (token) {
       try {
-        const response = await apiRequest(`${import.meta.env.VITE_API_URL || ''}/api/audits/${audit.id}/submit_for_review/`, {
+        const response = await apiRequest(`${API_URL}/api/audits/${audit.id}/submit_for_review/`, {
           method: 'POST',
           headers: { Authorization: `Bearer ${token}` },
         });
@@ -1148,7 +1148,7 @@ function AuditWorkspace({ audit, token, reviewer, onAuditUpdated, onDelete, onBa
         return;
       }
       try {
-        const response = await apiRequest(`${import.meta.env.VITE_API_URL || ''}/api/findings/`, {
+        const response = await apiRequest(`${API_URL}/api/findings/`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
           body: JSON.stringify({ ...findingDraft, audit: audit.id, module: moduleRecord.id }),
