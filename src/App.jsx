@@ -550,29 +550,25 @@ function SharedAuditPage({ token }) {
   const [audit, setAudit] = useState(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
+  const [expandedFinding, setExpandedFinding] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
     fetch(`${API_URL}/api/shared-audits/${encodeURIComponent(token)}/`)
       .then(readApiResponse)
-      .then((data) => {
-        if (!cancelled) setAudit(data);
-      })
-      .catch((requestError) => {
-        if (!cancelled) setError(requestError.message || 'This client audit link is not available.');
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
+      .then((data) => { if (!cancelled) setAudit(data); })
+      .catch((requestError) => { if (!cancelled) setError(requestError.message || 'This client audit link is not available.'); })
+      .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [token]);
 
-  if (loading) {
-    return <main className="shared-audit-page"><p>Loading your audit…</p></main>;
-  }
-  if (error || !audit) {
-    return <main className="shared-audit-page"><section className="shared-audit-card"><span className="brand-name">AuditPulse<span>.</span></span><h1>Audit link unavailable</h1><p>{error || 'This client audit link is invalid or no longer active.'}</p></section></main>;
-  }
+  if (loading) return <main className="shared-audit-page"><p>Loading your audit…</p></main>;
+  if (error || !audit) return <main className="shared-audit-page"><section className="shared-audit-card"><span className="brand-name">AuditPulse<span>.</span></span><h1>Audit link unavailable</h1><p>{error || 'This client audit link is invalid or no longer active.'}</p></section></main>;
+
+  const findings = audit.findings || [];
+  const roadmapItems = audit.roadmap_data?.items || [];
+  const kpis = audit.roadmap_data?.kpis || [];
+  const priorityFindings = findings.filter((finding) => ['critical', 'high'].includes(String(finding.priority || '').toLowerCase())).length;
 
   return <main className="shared-audit-page">
     <article className="shared-audit-card">
@@ -580,18 +576,19 @@ function SharedAuditPage({ token }) {
         <div><span className="brand-name">AuditPulse<span>.</span></span><span className="shared-audit-label">APPROVED CLIENT AUDIT</span></div>
         <button className="button button-outline" type="button" onClick={() => window.print()}>Print / save</button>
       </header>
-      <p className="eyebrow">A CLEARER PATH TO GROWTH</p>
-      <h1>{audit.client}</h1>
-      <p className="shared-audit-type">{audit.type}</p>
-      {audit.goal && <section className="shared-audit-goal"><h2>What this audit is working toward</h2><p>{audit.goal}</p></section>}
-      <section className="shared-audit-findings">
-        <div className="shared-findings-heading"><div><p className="eyebrow">EVIDENCE → IMPACT → ACTION</p><h2>Priorities and next steps</h2></div><span>{audit.findings.length} finding{audit.findings.length === 1 ? '' : 's'}</span></div>
-        {audit.findings.length ? audit.findings.map((finding, index) => <article className="shared-finding" key={`${finding.title}-${index}`}>
-          <div className="shared-finding-title"><span>{String(index + 1).padStart(2, '0')}</span><div><small>{finding.module_title} · {finding.priority} priority</small><h3>{finding.title}</h3></div></div>
-          <div className="shared-finding-grid"><section><h4>What we found</h4><p>{finding.evidence}</p></section><section><h4>Why it matters</h4><p>{finding.impact}</p></section><section><h4>Recommended next step</h4><p>{finding.recommendation}</p></section></div>
-          {(finding.owner_name || finding.due_date) && <p className="shared-finding-owner">{finding.owner_name ? `Suggested owner: ${finding.owner_name}` : ''}{finding.owner_name && finding.due_date ? ' · ' : ''}{finding.due_date ? `Target date: ${finding.due_date}` : ''}</p>}
-        </article>) : <div className="shared-audit-empty"><p>This audit was approved, but no client-facing findings have been added yet.</p></div>}
+      <section className="shared-report-cover">
+        <div className="shared-cover-copy"><p className="eyebrow">A CLEARER PATH TO GROWTH</p><h1>{audit.client}</h1><p className="shared-audit-type">{audit.type || 'Digital marketing audit'}</p><h2>Clear priorities. Evidence-led action.</h2><p className="shared-cover-description">This approved audit brings the most important opportunities together so your team can validate, prioritise, and act with confidence.</p><div className="shared-cover-pills">{audit.industry && <span>{audit.industry}</span>}{audit.audit_category && <span>{audit.audit_category}</span>}{audit.website_url && <a href={audit.website_url} target="_blank" rel="noreferrer">View website <ArrowUpRight size={12} /></a>}</div></div>
+        <aside className="shared-cover-summary" aria-label="Audit summary"><span>APPROVED AUDIT</span><strong>{String(findings.length).padStart(2, '0')}</strong><small>priorities ready for action</small><div><span>{priorityFindings}</span><small>high priority</small></div><div><span>{roadmapItems.length}</span><small>roadmap actions</small></div></aside>
       </section>
+      {audit.goal && <section className="shared-audit-goal"><p className="eyebrow">AUDIT OBJECTIVE</p><h2>What this audit is working toward</h2><p>{audit.goal}</p></section>}
+      <section className="shared-audit-findings">
+        <div className="shared-findings-heading"><div><p className="eyebrow">EVIDENCE → IMPACT → ACTION</p><h2>Priorities and next steps</h2></div><span>{findings.length} finding{findings.length === 1 ? '' : 's'}</span></div>
+        {findings.length ? findings.map((finding, index) => {
+          const isExpanded = expandedFinding === index;
+          return <article className={`shared-finding ${isExpanded ? 'expanded' : ''}`} key={`${finding.title}-${index}`}><div className="shared-finding-title"><span>{String(index + 1).padStart(2, '0')}</span><div><small>{finding.module_title} · {finding.priority} priority</small><h3>{finding.title}</h3></div></div><p className="shared-finding-summary">{finding.why_it_matters || finding.impact}</p><button className="shared-finding-toggle" type="button" aria-expanded={isExpanded} onClick={() => setExpandedFinding(isExpanded ? null : index)}>{isExpanded ? 'Hide detail' : 'View evidence and action'} <ChevronRight size={14} /></button><div className="shared-finding-grid"><section><h4>What we found</h4><p>{finding.problem || finding.evidence}</p></section><section><h4>Evidence and impact</h4><p>{finding.evidence || finding.impact}</p></section><section><h4>Recommended next step</h4><p>{finding.recommendation}</p></section></div>{(finding.owner_name || finding.due_date) && <p className="shared-finding-owner">{finding.owner_name ? `Suggested owner: ${finding.owner_name}` : ''}{finding.owner_name && finding.due_date ? ' · ' : ''}{finding.due_date ? `Target date: ${finding.due_date}` : ''}</p>}</article>;
+        }) : <div className="shared-audit-empty"><p>This audit was approved, but no client-facing findings have been added yet.</p></div>}
+      </section>
+      {(roadmapItems.length || kpis.length) && <section className="shared-roadmap"><div><p className="eyebrow">90-DAY ACTION PLAN</p><h2>Your implementation roadmap</h2><p>Sequence the work so the highest-confidence opportunities are addressed first.</p></div>{roadmapItems.length > 0 && <ol>{roadmapItems.map((item, index) => <li key={`${item.title}-${index}`}><span>{String(index + 1).padStart(2, '0')}</span><div><strong>{item.title}</strong>{item.description && <p>{item.description}</p>}</div></li>)}</ol>}{kpis.length > 0 && <div className="shared-kpi-grid">{kpis.map((kpi, index) => <article key={`${kpi.name}-${index}`}><small>SUCCESS MEASURE</small><strong>{kpi.name}</strong>{(kpi.baseline || kpi.target) && <p>{kpi.baseline ? `Baseline: ${kpi.baseline}` : ''}{kpi.baseline && kpi.target ? ' · ' : ''}{kpi.target ? `Target: ${kpi.target}` : ''}</p>}</article>)}</div>}</section>}
       <footer className="shared-audit-footer"><ShieldCheck size={16} /><span>Reviewed and approved by the VE team. Discuss the priorities and follow-up opportunities with your VE contact.</span></footer>
     </article>
   </main>;
